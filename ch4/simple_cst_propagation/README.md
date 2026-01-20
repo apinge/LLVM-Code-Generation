@@ -74,3 +74,56 @@ clang -o - -S -emit-llvm input.c -O0 | sed -e 's#optnone##g' | <path/to/llvm/bui
 optnone => remove the attribute that prevents optimizations
 mem2reg => get rid of stack accesses / build SSA
 instnamer => get rid of the implicit variables
+
+## IR讲解
+原始函数
+- foo
+
+```mlir
+;Processing function 'foo
+define i32 @foo(i32 noundef %arg) {
+bb:
+  %i = shl i32 5, 3
+  %i1 = icmp ne i32 %arg, 0 ; 
+  br i1 %i1, label %bb2, label %bb4
+
+bb2:                                              ; preds = %bb
+  %i3 = sdiv i32 %i, 5
+  br label %bb6
+
+bb4:                                              ; preds = %bb
+  %i5 = or i32 %i, 3855
+  br label %bb6
+
+bb6:                                              ; preds = %bb4, %bb2
+  %.0 = phi i32 [ %i3, %bb2 ], [ %i5, %bb4 ]
+  ret i32 %.0
+}
+```
+**icmp ne**`:=` not equal 这句话表示 `bool i1 = (arg !=0);`
+**sdiv** = signed divide（有符号除法）这句话 `%i3 = sdiv i32 %i, 5`里的 `i32` **同时修饰左右操作数**是说明这是个i32类型的除法 `int i3 = i/5;`
+
+- bar
+```mlir
+;Processing function 'bar
+define i32 @bar(i32 noundef %arg) {
+bb:
+  %i = shl i32 -1, 3
+  %i1 = icmp ne i32 %arg, 0
+  br i1 %i1, label %bb2, label %bb4
+
+bb2:                                              ; preds = %bb
+  %i3 = udiv i32 %i, 3
+  br label %bb6
+
+bb4:                                              ; preds = %bb
+  %i5 = or i32 %i, 3855
+  br label %bb6
+
+bb6:                                              ; preds = %bb4, %bb2
+  %.0 = phi i32 [ %i3, %bb2 ], [ %i5, %bb4 ]
+  %i7 = add i32 %.0, 1
+  ret i32 %i7
+}
+
+```
