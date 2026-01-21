@@ -28,13 +28,13 @@ static llvm::ConstantInt* helper(Instruction & instr, LLVMContext & ctxt, std::o
   所以 LHS 的类型是 ConstantInt*
   */
   auto *lhs = dyn_cast<ConstantInt>(instr.getOperand(0));
-  auto *rhs = dyn_cast<ConstantInt>(instr.getOperand(0));
+  auto *rhs = dyn_cast<ConstantInt>(instr.getOperand(1));
   if(!lhs || !rhs) return nullptr;
   std::optional<APInt> res = compute(lhs->getValue(), rhs->getValue());
   if(!res.has_value()) return nullptr;
-  llvm::ConstantInt* new_const = ConstantInt::get(ctxt,*res);
-  return new_const;
+  return ConstantInt::get(ctxt,*res);
 }
+
 
 // Takes \p Foo and apply a simple constant propagation optimization.
 // \returns true if \p Foo was modified (i.e., something had been constant
@@ -61,6 +61,7 @@ bool myConstantPropagation(Function &Foo) {
     for (Instruction &instr : make_early_inc_range(*bb)) {
         auto op = instr.getOpcode();
         llvm::ConstantInt* new_const = nullptr;
+        //Value* 
         //Value* new_const = nullptr;
         if(op==Instruction::Add){
             new_const = helper(instr,ctx,[](const APInt &A, const APInt &B) -> std::optional<APInt> {
@@ -94,6 +95,8 @@ bool myConstantPropagation(Function &Foo) {
         // LShr = 无符号逻辑右移，高位补 0；AShr = 有符号算术右移，高位补符号位
         else if(op==Instruction::LShr){
            new_const = helper(instr,ctx,[](const APInt &A, const APInt &B) -> std::optional<APInt> {
+             if (B.uge(A.getBitWidth()))
+                return std::nullopt;
               return A.lshr(B);
             });
 
@@ -106,6 +109,14 @@ bool myConstantPropagation(Function &Foo) {
         }
         else if(op==Instruction::Shl){
            new_const = helper(instr,ctx,[](const APInt &A, const APInt &B) -> std::optional<APInt> {
+            /*
+            https://llvm.org/docs/UndefinedBehavior.html#deferred-ub
+            这里是检查 B的位宽不能大于A否则ub了
+            比如 a = 1 b = 32
+            1<<32 就ub了
+            */
+             if (B.uge(A.getBitWidth()))
+                return std::nullopt;
               return A.shl(B);
             });
 
