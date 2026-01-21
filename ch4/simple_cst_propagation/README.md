@@ -127,3 +127,20 @@ bb6:                                              ; preds = %bb4, %bb2
 }
 
 ```
+
+### ReversePostOrderTraversal（RPO）
+
+对于`foo` bb->bb2->bb2->bb6
+```C++
+for(BasicBlock* bb:rpot){
+    llvm::outs() << "[DEBUG] bbloop\n";
+    for (Instruction &instr : make_early_inc_range(*bb)) {
+        auto op = instr.getOpcode();
+        llvm::outs() << "[DEBUG]" << instr <<"\n";
+    }
+  }
+```
+RPO是post order的反转
+![DFS](https://media.geeksforgeeks.org/wp-content/uploads/20250913162554418810/tree_construction_from_given_inorder_and_preorder_traversals_8.webp)
+
+RPO不同于拓扑排序不一定保证父一定传到子

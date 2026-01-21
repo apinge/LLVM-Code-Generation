@@ -49,7 +49,14 @@ bool myConstantPropagation(Function &Foo) {
   LLVMContext &ctx =Foo.getParent()->getContext();
   bool change = false;
   ReversePostOrderTraversal<Function *> rpot(&Foo);
- 
+  
+  for(BasicBlock* bb:rpot){
+    llvm::outs() << "[DEBUG] bbloop\n";
+    for (Instruction &instr : make_early_inc_range(*bb)) {
+        auto op = instr.getOpcode();
+        llvm::outs() << "[DEBUG]" << instr <<"\n";
+    }
+  }
   for(BasicBlock* bb: rpot){
      /*
       for (Instruction &I : make_early_inc_range(BB)) {
@@ -60,6 +67,7 @@ bool myConstantPropagation(Function &Foo) {
       */
     for (Instruction &instr : make_early_inc_range(*bb)) {
         auto op = instr.getOpcode();
+        // llvm::outs() << "[DEBUG]" << instr <<"\n";
         llvm::ConstantInt* new_const = nullptr;
         //Value* 
         //Value* new_const = nullptr;
