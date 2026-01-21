@@ -52,7 +52,7 @@ int main() {
     return -1;
   }
   auto *LLVMTM = static_cast<CodeGenTargetMachineImpl *>(
-      TheTarget->createTargetMachine(TT, "", "", TargetOptions(), std::nullopt,
+      TheTarget->createTargetMachine(static_cast<llvm::Triple>(TT), "", "", TargetOptions(), std::nullopt,
                                      std::nullopt, CodeGenOptLevel::Default));
   MachineModuleInfoWrapperPass MMIWP(LLVMTM);
   LLVMContext Context;
@@ -74,11 +74,11 @@ int main() {
   Register W1 = 0;
   for (unsigned i = 1, e = TRI->getNumRegs(); i != e && (!W0 || !W1); ++i) {
     if (!W0 && W0Str == TRI->getName(i)) {
-      W0 = i;
+      W0 = i; // 找到了 W0 对应的物理编号
       continue;
     }
     if (!W1 && W1Str == TRI->getName(i)) {
-      W1 = i;
+      W1 = i; // 找到了 W1 对应的物理编号
       continue;
     }
   }
