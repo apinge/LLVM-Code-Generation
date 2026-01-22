@@ -109,7 +109,7 @@ int main(int argc, char **argv) {
                [](const Function &F) { return checkFunctionCorrectness(F); });
     hadError |= !solutionIsCorrect;
 
-    // Then do the same thing with the new pass manager.
+    //Then do the same thing with the new pass manager.
     std::unique_ptr<Module> ModuleForNewPM = CloneModule(*MyModule);
 
     // CAREFUL the order of the manager is important here since the destructor
@@ -134,10 +134,10 @@ int main(int argc, char **argv) {
 #endif
     NewPM.run(*ModuleForNewPM, MAM);
 
-    solutionIsCorrect =
+    bool solutionIsCorrect_new =
         all_of(ModuleForNewPM->functions(),
                [](const Function &F) { return checkFunctionCorrectness(F); });
-    hadError |= !solutionIsCorrect;
+    hadError |= !solutionIsCorrect_new;
   }
   return hadError;
 }

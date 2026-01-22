@@ -57,3 +57,17 @@ clang -o - -S -emit-llvm test.c -O0 | sed -e 's#optnone##g' | <path/to/llvm/buil
 optnone => remove the attribute that prevents optimizations
 mem2reg => get rid of stack accesses / build SSA
 instnamer => get rid of the implicit variables
+
+
+'s#optnone##g' → 全文替换，把 `optnone` 删除，Clang 在 -O0 时，会在函数上加上 `optnone` 属性，告诉 LLVM 不要优化这个函数。后续的 LLVM Pass 能对函数做优化，所以先把 optnone 去掉。
+```
+sed -e 's#optnone##g' 
+```
+
+- `mem2reg`
+
+意思就是把 alloca 的变量移到寄存器，用 SSA 形式表示,去掉内存访问，让 IR 更“纯净”，便于分析
+
+- `instnamer`
+
+给所有 匿名变量（例如 %0, %1）生成名字.让 IR 更易读
