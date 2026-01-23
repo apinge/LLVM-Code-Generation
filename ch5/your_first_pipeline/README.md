@@ -73,3 +73,44 @@ cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS_DEBUG='-DUSE_MODULE_MGR
 
 Next, run your pass pipeline like you did previously and observe how the output of the pass pipeline changes.
 Try to understand what happens!
+
+
+### crash
+
+
+```bash
+
+Checking the run for Your turn on the new pass manager
+
+Program received signal SIGSEGV, Segmentation fault.
+0x000055555582ef7b in llvm::AnalysisManager<llvm::Module>::getResultImpl(llvm::AnalysisKey*, llvm::Module&) ()
+(gdb) bt
+#0  0x000055555582ef7b in llvm::AnalysisManager<llvm::Module>::getResultImpl(llvm::AnalysisKey*, llvm::Module&) ()
+#1  0x00005555558386a5 in llvm::ModuleToFunctionPassAdaptor::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&) ()
+#2  0x00005555556fbef7 in llvm::detail::PassModel<llvm::Module, llvm::ModuleToFunctionPassAdaptor, llvm::AnalysisManager<llvm::Module>>::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&) (
+    this=0x555557fe0be0, IR=..., AM=...) at /home/toqiu/workspace/llvm-project/llvm/include/llvm/IR/PassManagerInternal.h:91
+#3  0x00005555558352f4 in llvm::PassManager<llvm::Module, llvm::AnalysisManager<llvm::Module>>::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&) ()
+#4  0x00005555557018f2 in runYourTurnPassPipelineForNewPM (MyModule=...) at /home/toqiu/workspace/LLVM-Code-Generation/ch5/your_first_pipeline/your_turn/passPipelineWithNewPM.cpp:32
+#5  0x00005555556e8824 in llvm::function_ref<void (llvm::Module&)>::callback_fn<void (llvm::Module&)>(long, llvm::Module&) (callable=93824993990283, params#0=...)
+    at /home/toqiu/workspace/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:46
+#6  0x00005555556e804f in llvm::function_ref<void (llvm::Module&)>::operator()(llvm::Module&) const (this=0x7fffffffddd0, params#0=...)
+    at /home/toqiu/workspace/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:69
+#7  0x00005555556e5740 in main (argc=1, argv=0x7fffffffe0c8) at /home/toqiu/workspace/LLVM-Code-Generation/ch5/your_first_pipeline/main.cpp:109
+
+```
+
+有些Analysis是function level 有些是module level, function的Analysis需要调用module level的Analysis
+```C++
+  //少了下面两句
+    MAM.registerPass([&] { return FunctionAnalysisManagerModuleProxy(FAM); });
+    FAM.registerPass([&] { return ModuleAnalysisManagerFunctionProxy(MAM); });
+```
+
+Function Pass 正确调用路径
+FunctionPass
+  ↓
+FunctionAnalysisManager
+  ↓
+ModuleAnalysisManagerFunctionProxy
+  ↓
+ModuleAnalysisManager
