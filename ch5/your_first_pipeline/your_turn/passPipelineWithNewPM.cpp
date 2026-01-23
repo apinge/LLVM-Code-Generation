@@ -9,6 +9,7 @@
 #include "llvm/Passes/StandardInstrumentations.h"
 using namespace llvm;
 
+#define PRINT_MY_PIPELINE 1
 void runYourTurnPassPipelineForNewPM(Module &MyModule) {
     LLVMContext &context = MyModule.getContext();
 
@@ -16,15 +17,34 @@ void runYourTurnPassPipelineForNewPM(Module &MyModule) {
     FunctionAnalysisManager FAM;
     ModuleAnalysisManager MAM;
 
-    // MAM.registerPass([&] { return FunctionAnalysisManagerModuleProxy(FAM); });
-    // FAM.registerPass([&] { return ModuleAnalysisManagerFunctionProxy(MAM); });
+  
+    //这两句非常重要
+    // analysis不能跨层级访问 function level的analysis需要调用 module level的信息
+    MAM.registerPass([&] { return FunctionAnalysisManagerModuleProxy(FAM); });
+    FAM.registerPass([&] { return ModuleAnalysisManagerFunctionProxy(MAM); });
 
+#ifdef PRINT_MY_PIPELINE
+    PassInstrumentationCallbacks PIC;
+    PrintPassOptions PrintPassOpts;
+    PrintPassOpts.Verbose = true;
+    PrintPassOpts.SkipAnalyses = false;
+    PrintPassOpts.Indent = true;
+    StandardInstrumentations SI(context, /*DebugLogging=*/true,
+                                /*VerifyEachPass=*/false, PrintPassOpts);
+    SI.registerCallbacks(PIC, &MAM);
+
+    // Register the passes used implicitly at the start of the pipeline.
+    // And enable logging.
+    MAM.registerPass([&] { return PassInstrumentationAnalysis(&PIC); });
+    FAM.registerPass([&] { return PassInstrumentationAnalysis(&PIC); });
+#endif
+    // 注意 pb必须在打印的这些hook的后面？
+    // 如果在前面注册就打不出来
     PassBuilder pb; //注册基础analysis
     pb.registerFunctionAnalyses(FAM);
     pb.registerModuleAnalyses(MAM);
-    //少了下面两句
-    MAM.registerPass([&] { return FunctionAnalysisManagerModuleProxy(FAM); });
-    FAM.registerPass([&] { return ModuleAnalysisManagerFunctionProxy(MAM); });
+
+
 
     FunctionPassManager FPM;
     ModulePassManager MPM;
@@ -32,8 +52,8 @@ void runYourTurnPassPipelineForNewPM(Module &MyModule) {
     FPM.addPass(PromotePass());// mem2reg
     FPM.addPass(InstCombinePass()); // instcombine;
 
-    MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
-    MPM.addPass(AlwaysInlinerPass());
+    MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM))); 
+    MPM.addPass(AlwaysInlinerPass()); //注意不同的pass属于不同层级
 
     MPM.run(MyModule,MAM);
  
